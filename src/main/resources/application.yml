@@ -1,0 +1,4 @@
+# main configurations
+server:
+  port: 8080
+#  servlet.context-path: /comp8547-api/v1 # to serve on different base path
