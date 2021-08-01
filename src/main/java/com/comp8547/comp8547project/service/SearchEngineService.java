@@ -1,5 +1,6 @@
 package com.comp8547.comp8547project.service;
 
+import com.comp8547.comp8547project.webcrawler.TST;
 import lombok.SneakyThrows;
 import org.jsoup.*;
 import org.jsoup.nodes.Document;
@@ -24,10 +25,7 @@ public class SearchEngineService {
 
     static ArrayList<String> resultsFromGoogle; 
     static String textCrawl = "textCrawl";
-
-    static int totalCount = 0;
-    static int option;
-
+    static TST<Integer>tst;
     @SneakyThrows
     public HashMap<String, Integer> wordsWithSmallestEditDistance(final String wordToSearch) {
         final HashMap<String, Integer> totalWords = new HashMap<>();
@@ -45,12 +43,21 @@ public class SearchEngineService {
 
     @SneakyThrows
     public String crawlTextFromUrl(final String url) throws IOException {
-        final Document documentObject = Jsoup.connect(url).get();
+        System.out.println(url);
+        final Document documentObject = Jsoup.connect(url).ignoreContentType(true).get();
         final String cleanText = Jsoup.clean(documentObject.html(), new Whitelist());
         textCrawl = cleanText;
         return cleanText.replaceAll(" ", "\n");//to beautify
     }
-
+    @SneakyThrows
+    public static Integer get_value(String word)
+    {
+        if(tst==null)
+        {
+            tst = create_tst();
+        }
+        return tst.get(word);
+    }
     @SneakyThrows
     public long countRegexPattern(final String pattern) {
         long patternCount = 0;
@@ -65,44 +72,49 @@ public class SearchEngineService {
         BoyerMoore bmObject = new BoyerMoore(wordToSearch);
         return bmObject.search(searchSpace);
     }
+    @SneakyThrows
+    public String getLongestPrefix(final String word)
+    {
+        if(tst==null)
+        {
+            tst = create_tst();
+        }
+        return tst.longestPrefixOf(word);
+    }
+    @SneakyThrows
+    public Iterable<String> getPrefixMatch(final String word)
+    {
+        if(tst==null)
+        {
+            tst = create_tst();
+        }
+        return tst.prefixMatch(word);
 
+    }
     @SneakyThrows
     public List<String> searchFromGoogle(final String keyword) throws IOException {
     	resultsFromGoogle = new ArrayList<>();
-        System.out.print("Enter Text for searching.....");
         String keywordForGoogle = "https://www.google.com/search?q=";
         String setOfCharacters = "UTF-8";
         String browser = "Mozilla";
         
         System.out.println("Finding on Google ");
         String str = keywordForGoogle + URLEncoder.encode(keyword, "UTF-8");
-        Document documentObject = Jsoup.connect(str).get();
+        Document documentObject = Jsoup.connect(str).userAgent(browser).get();
         Elements allLinks = documentObject.select("a");
 
         for (Element selectedLink : allLinks) {
             String url = selectedLink.attr("abs:href");
-            System.out.println(url);
             String urlLink = "";
             if (url.indexOf("=") != -1 && url.indexOf("&") != -1) {
                 urlLink = URLDecoder.decode(url.substring(url.indexOf("=") + 1, url.indexOf("&")), setOfCharacters);
             }
-            totalCount++;
-            System.out.println("URL (" + totalCount + ") : " + urlLink);  
-            resultsFromGoogle.add(url);
+            if(!(urlLink.startsWith("https")) || urlLink.contains("youtube") || urlLink.contains("image"))
+            {
+                continue;
+            }
+            resultsFromGoogle.add(urlLink);
         }
-        if (totalCount == 0) {
-            System.out.println("\nNothing is found.....");
-        }
-        System.out.print("\n\nChoose one out of " + totalCount + " results : ");
-        if (option > totalCount || option < 1) {
-            System.out.println("Invalid option");
-            option = 1;
-        }
-        System.out.println("");
-        System.out.println("");
-        System.out.println("                                        **File is downloading **                  ");
-        System.out.println("");
-        System.out.println("");
         return resultsFromGoogle;
     }
     // This method is taken from black board
@@ -154,5 +166,26 @@ public class SearchEngineService {
                         Map.Entry::getKey,
                         Map.Entry::getValue,
                         (e1, e2) -> e1, LinkedHashMap::new));
+    }
+    static TST<Integer> create_tst()
+    {
+        TST<Integer>tst = new TST<>();
+        List<String>words = get_words();
+        for(int i=0;i<words.size();i++)
+        {
+            tst.put(words.get(i),i);
+        }
+        return tst;
+    }
+    static List<String> get_words()
+    {
+        List<String> words = new ArrayList<>();
+        Pattern p = Pattern.compile("[a-zA-Z]+");
+        Matcher m1 = p.matcher(textCrawl);
+        while(m1.find())
+        {
+            words.add(m1.group());
+        }
+        return words;
     }
 }
